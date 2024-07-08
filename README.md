@@ -9,7 +9,7 @@
 - Vite ( Toolchain )
 - Typescript ( for type safety )
 - Nextjs ( framework that I used for simpler setup )
-- State management? ( we don't needed as a application doesn't have an shared global component )
+- State management? ( we don't need it as an application doesn't have a shared global component )
 
 ## Algorithm
 
