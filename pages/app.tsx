@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import Head from "next/head";
 import { Toaster } from "sonner";
-import CameraColorPick, { FacingMode } from "../src/components/Camera";
+import CameraColorPick from "../src/components/Camera";
 import { useState, useEffect } from "react";
 import { getColorName, rgbToHex } from "../src/utils";
 import Image from "next/image";
@@ -11,14 +11,12 @@ import axios from "axios";
 const App: NextPage = () => {
   const [color, setColor] = useState("#888888");
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isFacingMode, setIsFacingMode] = useState(FacingMode.environment);
+  const [isFacingMode, setIsFacingMode] = useState(false);
   const [loadedVoices, setLoadedVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   const handleCameraSwitch = () => {
     // Toggle the isFacingMode between user and environment
-    setIsFacingMode((prevMode) =>
-      prevMode === FacingMode.user ? FacingMode.environment : FacingMode.user
-    );
+    setIsFacingMode((prevMode) => !prevMode);
   };
 
   const translationUrl = `${process.env.URL_TRANSLATION}/translate`;
