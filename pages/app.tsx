@@ -74,7 +74,7 @@ const App: NextPage = () => {
     };
   }, []);
 
-  const saveColor = async () => {
+  const whatColor = async () => {
     if (isSpeaking) {
       return;
     }
@@ -86,7 +86,7 @@ const App: NextPage = () => {
     let translatedText = renderText;
     let targetLanguage = "en"; // Default language is English
 
-    if (defaultLanguage.startsWith("en")) {
+    if (defaultLanguage.startsWith("id")) {
       translatedText = await translateText(renderText, "id");
       targetLanguage = "id"; // Set target language to Indonesian
 
@@ -97,15 +97,13 @@ const App: NextPage = () => {
   };
 
   const speakText = (text: string, targetLanguage: string = "") => {
-    const voices = loadedVoices;
-    let desiredVoice = null;
+    let desiredVoice = loadedVoices.find(
+      (voice) => voice.lang === (targetLanguage === "id" ? "id-ID" : "en-GB")
+    );
 
-    if (targetLanguage === "") {
-      desiredVoice = voices.find((voice) => voice.lang === "en-GB");
-    }
-
-    if (targetLanguage === "id") {
-      desiredVoice = voices.find((voice) => voice.lang === "id-ID");
+    if (!desiredVoice && targetLanguage === "id") {
+      alert("Indonesian voice not found, falling back to English.");
+      desiredVoice = loadedVoices.find((voice) => voice.lang === "en-GB");
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -113,10 +111,7 @@ const App: NextPage = () => {
     utterance.rate = 0.9;
     utterance.pitch = 1.2;
 
-    utterance.onend = () => {
-      setIsSpeaking(false);
-    };
-
+    utterance.onend = () => setIsSpeaking(false);
     speechSynthesis.speak(utterance);
   };
 
@@ -165,7 +160,7 @@ const App: NextPage = () => {
               </button>
               <button
                 className="w-20 h-20 border-[5px] border-[#fff] flex justify-center items-center rounded-full select-none"
-                onClick={() => saveColor()}
+                onClick={() => whatColor()}
               >
                 <div className="w-16 h-16 bg-white rounded-full select-none"></div>
               </button>
