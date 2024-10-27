@@ -9,14 +9,14 @@ type CameraProps = {
 export default function CameraColorPick(props: CameraProps) {
   const [isCameraSwitching, setIsCameraSwitching] = useState(false);
 
-  let video = useRef<HTMLVideoElement>();
-  let stream = useRef<MediaStream | null>();
-  let myCanvas = useRef(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const stream = useRef<MediaStream | null>(null);
+  const myCanvas = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (navigator.mediaDevices) startCamera();
 
-    let timer = setInterval(() => {
+    const timer = setInterval(() => {
       if (props.onColor && !props.paused) {
         props.onColor(getColorAt(video.current, 207, 368));
       }
@@ -27,31 +27,34 @@ export default function CameraColorPick(props: CameraProps) {
     };
   }, [props.paused]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     startCamera();
+    return () => stopCamera(); // Stop the camera when the component unmounts or facingMode changes
   }, [props.facingMode]);
 
-  function getColorAt(webcam: any, x: number, y: number) {
-    // To be able to access pixel data from the webcam feed, we must first draw the current frame in
-    // a temporary canvas.
-    var canvas = myCanvas.current as any;
-    var context = canvas.getContext("2d");
-    canvas.width = 414;
-    canvas.height = 736;
-    context.drawImage(webcam, 0, 0, 414, 736);
+  const getColorAt = (
+    webcam: HTMLVideoElement | null,
+    x: number,
+    y: number
+  ) => {
+    if (!webcam) return null;
 
-    // Then we grab the pixel information from the temp canvas and return it as an object
-    var pixel = context.getImageData(x, y, 1, 1).data;
-    return {
-      r: pixel[0],
-      g: pixel[1],
-      b: pixel[2],
-    };
-  }
+    const canvas = myCanvas.current;
+    const context = canvas?.getContext("2d");
+    if (canvas && context) {
+      canvas.width = 414;
+      canvas.height = 736;
+      context.drawImage(webcam, 0, 0, 414, 736);
+      const pixel = context.getImageData(x, y, 1, 1).data;
+      return { r: pixel[0], g: pixel[1], b: pixel[2] };
+    }
+    return null;
+  };
 
   const startCamera = () => {
     if (isCameraSwitching) return;
     setIsCameraSwitching(true);
+
     navigator.mediaDevices
       .getUserMedia({
         video: {
@@ -61,18 +64,25 @@ export default function CameraColorPick(props: CameraProps) {
         },
       })
       .then((feed) => {
+        stopCamera(); // Stop any existing streams before starting a new one
         stream.current = feed;
-        const videoRef = video.current as any;
-        videoRef.srcObject = stream.current;
-        videoRef.play();
-        videoRef.onloadeddata = () => {
-          setIsCameraSwitching(false);
-        };
+        if (video.current) {
+          video.current.srcObject = stream.current;
+          video.current.play();
+        }
+        setIsCameraSwitching(false);
       })
-      .catch(function (err) {
+      .catch((err) => {
         console.log(err);
         setIsCameraSwitching(false);
       });
+  };
+
+  const stopCamera = () => {
+    if (stream.current) {
+      stream.current.getTracks().forEach((track) => track.stop());
+      stream.current = null;
+    }
   };
 
   return (
@@ -88,10 +98,9 @@ export default function CameraColorPick(props: CameraProps) {
       />
 
       <video
-        //@ts-ignore
         ref={video}
-        autoPlay={true}
-        muted={true}
+        autoPlay
+        muted
         controls={false}
         preload="auto"
         playsInline
