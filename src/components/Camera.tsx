@@ -50,33 +50,40 @@ export default function CameraColorPick(props: CameraProps) {
     return { r: pixel[0], g: pixel[1], b: pixel[2] };
   }
 
-  const startCamera = () => {
+  const startCamera = async (retryCount = 0) => {
     if (isCameraSwitching) return;
     setIsCameraSwitching(true);
 
     // Stop the current stream if active
     stopCamera();
 
-    navigator.mediaDevices
-      .getUserMedia({
+    try {
+      // Delay to ensure the previous camera is fully released
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const feed = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: props.facingMode,
           width: { min: 1024, ideal: 1280, max: 1920 },
           height: { min: 576, ideal: 720, max: 1080 },
         },
-      })
-      .then((feed) => {
-        stream.current = feed;
-        if (video.current) {
-          video.current.srcObject = stream.current;
-          video.current.play();
-        }
-        setIsCameraSwitching(false);
-      })
-      .catch((err) => {
-        console.log(err);
-        setIsCameraSwitching(false);
       });
+
+      stream.current = feed;
+      if (video.current) {
+        video.current.srcObject = stream.current;
+        video.current.play();
+      }
+      setIsCameraSwitching(false);
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      if (retryCount < 2) {
+        // Retry up to 2 times to switch the camera
+        setTimeout(() => startCamera(retryCount + 1), 500);
+      } else {
+        setIsCameraSwitching(false);
+      }
+    }
   };
 
   const stopCamera = () => {
