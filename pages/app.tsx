@@ -86,7 +86,7 @@ const App: NextPage = () => {
     let translatedText = renderText;
     let targetLanguage = "en"; // Default language is English
 
-    if (defaultLanguage.startsWith("id")) {
+    if (defaultLanguage.startsWith("en")) {
       translatedText = await translateText(renderText, "id");
       targetLanguage = "id"; // Set target language to Indonesian
 
