@@ -14,14 +14,14 @@ type CameraProps = {
 export default function CameraColorPick(props: CameraProps) {
   const [isCameraSwitching, setIsCameraSwitching] = useState(false);
 
-  let video = useRef<HTMLVideoElement>();
-  let stream = useRef<MediaStream | null>();
-  let myCanvas = useRef(null);
+  let video = useRef<HTMLVideoElement>(null);
+  let stream = useRef<MediaStream | null>(null);
+  let myCanvas = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (navigator.mediaDevices) startCamera();
 
-    let timer = setInterval(() => {
+    const timer = setInterval(() => {
       if (props.onColor && !props.paused) {
         props.onColor(getColorAt(video.current, 207, 368));
       }
@@ -29,34 +29,34 @@ export default function CameraColorPick(props: CameraProps) {
 
     return () => {
       clearInterval(timer);
+      stopCamera(); // Clean up the camera stream when the component unmounts
     };
   }, [props.paused]);
 
-  React.useEffect(() => {
-    startCamera();
+  useEffect(() => {
+    startCamera(); // Restart camera when facingMode changes
+    return stopCamera; // Stop camera on component unmount or facingMode change
   }, [props.facingMode]);
 
-  function getColorAt(webcam: any, x: number, y: number) {
-    // To be able to access pixel data from the webcam feed, we must first draw the current frame in
-    // a temporary canvas.
-    var canvas = myCanvas.current as any;
-    var context = canvas.getContext("2d");
+  function getColorAt(webcam: HTMLVideoElement | null, x: number, y: number) {
+    const canvas = myCanvas.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context || !webcam) return { r: 0, g: 0, b: 0 };
+
     canvas.width = 414;
     canvas.height = 736;
     context.drawImage(webcam, 0, 0, 414, 736);
-
-    // Then we grab the pixel information from the temp canvas and return it as an object
-    var pixel = context.getImageData(x, y, 1, 1).data;
-    return {
-      r: pixel[0],
-      g: pixel[1],
-      b: pixel[2],
-    };
+    const pixel = context.getImageData(x, y, 1, 1).data;
+    return { r: pixel[0], g: pixel[1], b: pixel[2] };
   }
 
   const startCamera = () => {
     if (isCameraSwitching) return;
     setIsCameraSwitching(true);
+
+    // Stop the current stream if active
+    stopCamera();
+
     navigator.mediaDevices
       .getUserMedia({
         video: {
@@ -67,46 +67,40 @@ export default function CameraColorPick(props: CameraProps) {
       })
       .then((feed) => {
         stream.current = feed;
-        const videoRef = video.current as any;
-        videoRef.srcObject = stream.current;
-        videoRef.play();
-        videoRef.onloadeddata = () => {
-          setIsCameraSwitching(false);
-        };
+        if (video.current) {
+          video.current.srcObject = stream.current;
+          video.current.play();
+        }
+        setIsCameraSwitching(false);
       })
-      .catch(function (err) {
+      .catch((err) => {
         console.log(err);
         setIsCameraSwitching(false);
       });
   };
 
+  const stopCamera = () => {
+    if (stream.current) {
+      stream.current.getTracks().forEach((track) => track.stop());
+      stream.current = null;
+    }
+  };
+
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
-      <canvas
-        ref={myCanvas}
-        style={{
-          display: "none",
-          position: "absolute",
-          top: 0,
-          left: 0,
-        }}
-      />
+      <canvas ref={myCanvas} style={{ display: "none" }} />
 
       <video
-        //@ts-ignore
         ref={video}
-        autoPlay={true}
-        muted={true}
-        controls={false}
-        preload="auto"
+        autoPlay
+        muted
         playsInline
         style={{
           objectFit: "cover",
-          objectPosition: "50% 50%",
-          transition: isCameraSwitching ? "opacity 0.5s ease" : "none",
           opacity: isCameraSwitching ? 0 : 1,
+          transition: "opacity 0.5s ease",
         }}
-      ></video>
+      />
     </div>
   );
 }
