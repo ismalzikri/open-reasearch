@@ -54,6 +54,12 @@ const App: NextPage = () => {
     const initializeVoices = () => {
       const voices = speechSynthesis.getVoices();
       setLoadedVoices(voices);
+
+      // Check if Indonesian voice is available
+      const indonesianVoice = voices.find((voice) => voice.lang === "id-ID");
+      if (indonesianVoice) {
+        alert("Indonesian voice (id-ID) found!");
+      }
     };
 
     const handleVoicesChanged = () => {
@@ -97,21 +103,33 @@ const App: NextPage = () => {
   };
 
   const speakText = (text: string, targetLanguage: string = "") => {
-    let desiredVoice = loadedVoices.find(
-      (voice) => voice.lang === (targetLanguage === "id" ? "id-ID" : "en-GB")
-    );
+    // Set the desired voice based on the target language, with en-US as the default
+    let desiredVoice: SpeechSynthesisVoice | null = null;
 
-    if (!desiredVoice && targetLanguage === "id") {
-      alert("Indonesian voice not found, falling back to English.");
-      desiredVoice = loadedVoices.find((voice) => voice.lang === "en-GB");
+    if (targetLanguage === "id") {
+      desiredVoice =
+        loadedVoices.find((voice) => voice.lang === "id-ID") || null;
+    } else {
+      desiredVoice =
+        loadedVoices.find((voice) => voice.lang === "en-US") || null;
     }
 
+    // // If no desired voice is found, fall back to any available English voice
+    // if (!desiredVoice) {
+    //   console.warn(
+    //     `Desired voice not found. Falling back to another available English voice.`
+    //   );
+    //   desiredVoice =
+    //     loadedVoices.find((voice) => voice.lang.startsWith("en")) || null;
+    // }
+
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.voice = desiredVoice || null;
+    utterance.voice = desiredVoice;
     utterance.rate = 0.9;
     utterance.pitch = 1.2;
 
     utterance.onend = () => setIsSpeaking(false);
+
     speechSynthesis.speak(utterance);
   };
 
