@@ -5,14 +5,12 @@ import CameraColorPick from "../src/components/Camera";
 import { useState, useEffect } from "react";
 import { getColorName, rgbToHex } from "../src/utils";
 import Image from "next/image";
-
 import axios from "axios";
 
 const App: NextPage = () => {
   const [color, setColor] = useState("#888888");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isFacingMode, setIsFacingMode] = useState(false);
-  const [loadedVoices, setLoadedVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   const handleCameraSwitch = () => {
     // Toggle the isFacingMode between user and environment
@@ -20,6 +18,7 @@ const App: NextPage = () => {
   };
 
   const translationUrl = `${process.env.URL_TRANSLATION}/translate`;
+  const ttsUrl = `${process.env.URL_TEXTTOSPEECH}/speak`;
 
   const makeTranslationRequest = async (
     text: string,
@@ -50,36 +49,6 @@ const App: NextPage = () => {
     }
   };
 
-  useEffect(() => {
-    const initializeVoices = () => {
-      const voices = speechSynthesis.getVoices();
-      setLoadedVoices(voices);
-
-      // Check if Indonesian voice is available
-      const indonesianVoice = voices.find((voice) => voice.lang === "id-ID");
-      if (indonesianVoice) {
-        alert("Indonesian voice (id-ID) found!");
-      }
-    };
-
-    const handleVoicesChanged = () => {
-      initializeVoices();
-      speechSynthesis.onvoiceschanged = null; // Reset the event listener after initialization
-    };
-
-    // Check if voices are already loaded
-    if (speechSynthesis.getVoices().length > 0) {
-      initializeVoices();
-    } else {
-      speechSynthesis.onvoiceschanged = handleVoicesChanged;
-    }
-
-    // Clean up the event listener when the component unmounts
-    return () => {
-      speechSynthesis.onvoiceschanged = null;
-    };
-  }, []);
-
   const whatColor = async () => {
     if (isSpeaking) {
       return;
@@ -88,49 +57,48 @@ const App: NextPage = () => {
     const result = getColorName(color);
     const renderText = `The color is ${result}`;
 
-    const defaultLanguage = navigator.language || navigator.language;
+    const defaultLanguage = navigator.language || "en";
     let translatedText = renderText;
     let targetLanguage = "en"; // Default language is English
 
     if (defaultLanguage.startsWith("id")) {
       translatedText = await translateText(renderText, "id");
       targetLanguage = "id"; // Set target language to Indonesian
-
-      setIsSpeaking(true);
     }
 
-    speakText(translatedText, targetLanguage);
+    setIsSpeaking(true);
+    await speakText(translatedText, targetLanguage);
+    setIsSpeaking(false);
   };
 
-  const speakText = (text: string, targetLanguage: string = "") => {
-    // Set the desired voice based on the target language, with en-US as the default
-    let desiredVoice: SpeechSynthesisVoice | null = null;
+  const speakText = async (text: string, targetLanguage: string) => {
+    try {
+      // Make a POST request to the gTTS-based API
+      const response = await axios.post(
+        ttsUrl,
+        {
+          text: text,
+          lang: targetLanguage,
+        },
+        {
+          responseType: "blob", // Set response type to blob to handle binary data
+        }
+      );
 
-    if (targetLanguage === "id") {
-      desiredVoice =
-        loadedVoices.find((voice) => voice.lang === "id-ID") || null;
-    } else {
-      desiredVoice =
-        loadedVoices.find((voice) => voice.lang === "en-US") || null;
+      // Create a URL for the audio blob
+      const audioUrl = URL.createObjectURL(response.data);
+      const audio = new Audio(audioUrl);
+
+      // Play the audio
+      audio.play();
+
+      // Cleanup after the audio finishes playing
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+      };
+    } catch (error) {
+      console.error("Failed to fetch audio from TTS API:", error);
     }
-
-    // // If no desired voice is found, fall back to any available English voice
-    // if (!desiredVoice) {
-    //   console.warn(
-    //     `Desired voice not found. Falling back to another available English voice.`
-    //   );
-    //   desiredVoice =
-    //     loadedVoices.find((voice) => voice.lang.startsWith("en")) || null;
-    // }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.voice = desiredVoice;
-    utterance.rate = 0.9;
-    utterance.pitch = 1.2;
-
-    utterance.onend = () => setIsSpeaking(false);
-
-    speechSynthesis.speak(utterance);
   };
 
   const renderApp = () => {
