@@ -2,7 +2,7 @@ import type { NextPage } from "next";
 import Head from "next/head";
 import { Toaster } from "sonner";
 import CameraColorPick from "../src/components/Camera";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { getColorName, rgbToHex } from "../src/utils";
 import Image from "next/image";
 import axios from "axios";
