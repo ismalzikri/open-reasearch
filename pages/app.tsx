@@ -57,7 +57,7 @@ const App: NextPage = () => {
     const result = getColorName(color);
     const renderText = `The color is ${result}`;
 
-    const defaultLanguage = navigator.language || "en";
+    const defaultLanguage = "id";
     let translatedText = renderText;
     let targetLanguage = "id"; // Default language is English
 
