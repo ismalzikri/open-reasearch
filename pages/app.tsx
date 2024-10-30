@@ -59,7 +59,7 @@ const App: NextPage = () => {
 
     const defaultLanguage = navigator.language || "en";
     let translatedText = renderText;
-    let targetLanguage = "en"; // Default language is English
+    let targetLanguage = "id"; // Default language is English
 
     if (defaultLanguage.startsWith("id")) {
       translatedText = await translateText(renderText, "id");
