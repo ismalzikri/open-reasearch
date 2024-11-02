@@ -1,10 +1,13 @@
-import { knownColors } from "../data/colors";
-
 export function rgbToHex(r: number, g: number, b: number): string {
   return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
 }
 
-export function getColorName(hexCode: string): string {
+// Assuming knownColors is passed in as an argument
+
+export function getColorName(
+  hexCode: string,
+  knownColors: Array<{ name: string; code: string }>
+): string {
   const userColor = hexToRGB(hexCode.toLowerCase());
 
   let closestColor = null;

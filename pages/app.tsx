@@ -1,75 +1,26 @@
-import type { NextPage } from "next";
-import Head from "next/head";
-import { Toaster } from "sonner";
-import CameraColorPick from "../src/components/Camera";
 import { useState } from "react";
+import type { NextPage } from "next";
+import { Toaster } from "sonner";
 import { getColorName, rgbToHex } from "../src/utils";
+import { useTranslation } from "../src/context/TranslationContext";
+import Head from "next/head";
 import Image from "next/image";
 import axios from "axios";
+import CameraColorPick from "../src/components/Camera";
 
 const App: NextPage = () => {
   const [color, setColor] = useState("#888888");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isFacingMode, setIsFacingMode] = useState(false);
 
+  const { translatedColors, renderText } = useTranslation();
+
   const handleCameraSwitch = () => {
     // Toggle the isFacingMode between user and environment
     setIsFacingMode((prevMode) => !prevMode);
   };
 
-  const translationUrl = `${process.env.URL_TRANSLATION}/translate`;
   const ttsUrl = `${process.env.URL_TEXTTOSPEECH}/speak`;
-
-  const makeTranslationRequest = async (
-    text: string,
-    targetLanguage: string
-  ): Promise<string> => {
-    try {
-      const response = await axios.post(translationUrl, {
-        text,
-        to: targetLanguage,
-      });
-      return response.data.translatedText;
-    } catch (error) {
-      console.error("Error:", error);
-      throw error;
-    }
-  };
-
-  const translateText = async (
-    text: string,
-    targetLanguage: string
-  ): Promise<string> => {
-    try {
-      const translatedText = await makeTranslationRequest(text, targetLanguage);
-      return translatedText;
-    } catch (error) {
-      console.error("Error:", error);
-      return text;
-    }
-  };
-
-  const whatColor = async () => {
-    if (isSpeaking) {
-      return;
-    }
-
-    const result = getColorName(color);
-    const renderText = `The color is ${result}`;
-
-    const defaultLanguage = navigator.language || "en";
-    let translatedText = renderText;
-    let targetLanguage = "en"; // Default language is English
-
-    if (defaultLanguage.startsWith("id")) {
-      translatedText = await translateText(renderText, "id");
-      targetLanguage = "id"; // Set target language to Indonesian
-    }
-
-    setIsSpeaking(true);
-    await speakText(translatedText, targetLanguage);
-    setIsSpeaking(false);
-  };
 
   const speakText = async (text: string, targetLanguage: string) => {
     try {
@@ -101,6 +52,23 @@ const App: NextPage = () => {
     }
   };
 
+  const closestColorName = getColorName(color, translatedColors);
+
+  const whatColor = async () => {
+    if (isSpeaking) {
+      return;
+    }
+
+    const result = closestColorName;
+    const speechSentence = `${renderText} ${result}`;
+
+    const targetLanguage = navigator.language || "en";
+
+    setIsSpeaking(true);
+    await speakText(speechSentence, targetLanguage);
+    setIsSpeaking(false);
+  };
+
   const renderApp = () => {
     return (
       <>
@@ -129,9 +97,7 @@ const App: NextPage = () => {
                   style={{ background: color }}
                 ></div>
               </div>
-              <div className="w-full whitespace-nowrap">
-                {getColorName(color)}
-              </div>
+              <div className="w-full whitespace-nowrap">{closestColorName}</div>
             </div>
             <div className="w-0 h-0 absolute top-[-6px] border-l-[10px] border-l-transparent border-t-[10px] border-t-white/30 border-r-[10px] border-r-transparent shadow-black/90 shadow-xl"></div>
             <div className="fixed z-10 bottom-4 xs:bottom-6 w-full lg:max-w-sm px-7 flex items-center justify-between">
