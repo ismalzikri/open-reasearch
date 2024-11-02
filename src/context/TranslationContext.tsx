@@ -1,4 +1,3 @@
-// src/context/TranslationContext.tsx
 import React, {
   createContext,
   useContext,
@@ -22,6 +21,17 @@ export const TranslationProvider = ({ children }: { children: ReactNode }) => {
   const translationUrl = `${process.env.URL_TRANSLATION}/translate`;
 
   const fetchTranslations = async () => {
+    const defaultLanguage = "en";
+    const userLanguage = navigator.language || defaultLanguage;
+
+    // Check if the user's language is the same as the default language
+    if (userLanguage.startsWith(defaultLanguage)) {
+      // If the language matches, no translation is needed
+      setTranslatedColors(knownColors);
+      setRenderText("The color is");
+      return;
+    }
+
     try {
       const response = await axios.post(translationUrl, {
         colors: knownColors,
