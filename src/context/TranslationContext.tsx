@@ -25,17 +25,18 @@ export const TranslationProvider = ({ children }: { children: ReactNode }) => {
     const userLanguage = navigator.language || defaultLanguage;
 
     // Check if the user's language is the same as the default language
-    if (userLanguage.startsWith(defaultLanguage)) {
-      // If the language matches, no translation is needed
-      setTranslatedColors(knownColors);
-      setRenderText("The color is");
-      return;
-    }
+    // if (userLanguage.startsWith(defaultLanguage)) {
+    //   // If the language matches, no translation is needed
+    //   setTranslatedColors(knownColors);
+    //   setRenderText("The color is");
+    //   return;
+    // }
 
     try {
       const response = await axios.post(translationUrl, {
         colors: knownColors,
-        to: navigator.language || "en",
+        // to: navigator.language || "en",
+        to: "id",
         renderText: "The color is",
       });
       const data = response.data;
