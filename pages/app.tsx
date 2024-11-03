@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { NextPage } from "next";
 import { Toaster } from "sonner";
 import { getColorName, rgbToHex } from "../src/utils";
@@ -62,16 +62,13 @@ const App: NextPage = () => {
     const result = closestColorName;
     const speechSentence = `${renderText} ${result}`;
 
-    const targetLanguage = navigator.language;
+    const targetLanguage =
+      navigator.language === "id-ID" ? "id" : navigator.language;
 
     setIsSpeaking(true);
     await speakText(speechSentence, targetLanguage);
     setIsSpeaking(false);
   };
-
-  useEffect(() => {
-    alert(navigator.language);
-  }, []);
 
   const renderApp = () => {
     return (
