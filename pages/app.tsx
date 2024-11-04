@@ -62,11 +62,11 @@ const App: NextPage = () => {
     const result = closestColorName;
     const speechSentence = `${renderText} ${result}`;
 
-    const targetLanguage =
-      navigator.language === "id-ID" ? "id" : navigator.language;
+    // const targetLanguage =
+    //   navigator.language === "id-ID" ? "id" : navigator.language;
 
     setIsSpeaking(true);
-    await speakText(speechSentence, targetLanguage);
+    await speakText(speechSentence, "id");
     setIsSpeaking(false);
   };
 
