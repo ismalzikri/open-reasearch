@@ -1,33 +1,41 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import axios from "axios";
 
 export const useDebouncedSpeakText = (ttsUrl: string) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const audioCache = useRef<Map<string, string>>(new Map());
 
   const debouncedSpeakText = useCallback(
     async (text: string, lang: string) => {
       if (isSpeaking) return;
 
-      setIsSpeaking(true);
-      try {
-        const response = await axios.post(
-          ttsUrl,
-          { text, lang },
-          { responseType: "blob" }
-        );
+      const cacheKey = `${text}-${lang}`;
+      let audioUrl = audioCache.current.get(cacheKey);
 
-        const audioUrl = URL.createObjectURL(response.data);
-        const audio = new Audio(audioUrl);
+      if (!audioUrl) {
+        try {
+          setIsSpeaking(true);
+          const response = await axios.post(
+            ttsUrl,
+            { text, lang },
+            { responseType: "blob" }
+          );
 
-        audio.play();
-        audio.onended = () => {
-          URL.revokeObjectURL(audioUrl);
+          audioUrl = URL.createObjectURL(response.data);
+          audioCache.current.set(cacheKey, audioUrl); // Cache the audio URL
+        } catch (error) {
+          console.error("Error during TTS request:", error);
           setIsSpeaking(false);
-        };
-      } catch (error) {
-        console.error("Error during TTS request:", error);
-        setIsSpeaking(false);
+          return;
+        }
       }
+
+      const audio = new Audio(audioUrl);
+      audio.play();
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl); // Clean up if necessary
+        setIsSpeaking(false);
+      };
     },
     [isSpeaking, ttsUrl]
   );
