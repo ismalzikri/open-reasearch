@@ -33,7 +33,7 @@ export const useDebouncedSpeakText = (ttsUrl: string) => {
       const audio = new Audio(audioUrl);
       audio.play();
       audio.onended = () => {
-        URL.revokeObjectURL(audioUrl); // Clean up if necessary
+        if (audioUrl) URL.revokeObjectURL(audioUrl); // Clean up if necessary
         setIsSpeaking(false);
       };
     },
