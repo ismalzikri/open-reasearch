@@ -3,72 +3,45 @@ import type { NextPage } from "next";
 import { Toaster } from "sonner";
 import { getColorName, rgbToHex } from "../src/utils";
 import { useTranslation } from "../src/context/TranslationContext";
+import { useDebouncedSpeakText } from "../src/hooks/useDebouncedSpeakText";
 import Head from "next/head";
 import Image from "next/image";
-import axios from "axios";
 import CameraColorPick from "../src/components/Camera";
 
 const App: NextPage = () => {
   const [color, setColor] = useState("#888888");
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [isFacingMode, setIsFacingMode] = useState(false);
+  const ttsUrl = `${process.env.URL_TEXTTOSPEECH}/speak`;
 
   const { translatedColors, renderText } = useTranslation();
+  const debouncedSpeakText = useDebouncedSpeakText(ttsUrl);
+  const closestColorName = getColorName(color, translatedColors);
 
   const handleCameraSwitch = () => {
     // Toggle the isFacingMode between user and environment
     setIsFacingMode((prevMode) => !prevMode);
   };
 
-  const ttsUrl = `${process.env.URL_TEXTTOSPEECH}/speak`;
-
-  const speakText = async (text: string, targetLanguage: string) => {
-    try {
-      // Make a POST request to the gTTS-based API
-      const response = await axios.post(
-        ttsUrl,
-        {
-          text: text,
-          lang: targetLanguage,
-        },
-        {
-          responseType: "blob", // Set response type to blob to handle binary data
-        }
-      );
-
-      // Create a URL for the audio blob
-      const audioUrl = URL.createObjectURL(response.data);
-      const audio = new Audio(audioUrl);
-
-      // Play the audio
-      audio.play();
-
-      // Cleanup after the audio finishes playing
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-      };
-    } catch (error) {
-      console.error("Failed to fetch audio from TTS API:", error);
-    }
+  const whatColor = () => {
+    const speechSentence = `${renderText} ${closestColorName}`;
+    debouncedSpeakText(speechSentence, "id");
   };
 
-  const closestColorName = getColorName(color, translatedColors);
+  // const whatColor = async () => {
+  //   if (isSpeaking) {
+  //     return;
+  //   }
 
-  const whatColor = async () => {
-    if (isSpeaking) {
-      return;
-    }
+  //   const result = closestColorName;
+  //   const speechSentence = `${renderText} ${result}`;
 
-    const result = closestColorName;
-    const speechSentence = `${renderText} ${result}`;
+  //   // const targetLanguage =
+  //   //   navigator.language === "id-ID" ? "id" : navigator.language;
 
-    // const targetLanguage =
-    //   navigator.language === "id-ID" ? "id" : navigator.language;
-
-    setIsSpeaking(true);
-    await speakText(speechSentence, "id");
-    setIsSpeaking(false);
-  };
+  //   setIsSpeaking(true);
+  //   await speakText(speechSentence, "id");
+  //   setIsSpeaking(false);
+  // };
 
   useEffect(() => {
     alert(navigator.language);
