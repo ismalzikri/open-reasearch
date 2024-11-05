@@ -17,7 +17,6 @@ export const useDebouncedSpeakText = (ttsUrl: string) => {
           { responseType: "json" } // Expect JSON response with Base64 audio
         );
 
-        // Assuming the API response is structured like { audio: "base64string..." }
         const base64Audio = response.data.audio;
 
         // Decode Base64 to ArrayBuffer
