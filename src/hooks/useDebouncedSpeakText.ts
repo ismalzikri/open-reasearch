@@ -6,7 +6,7 @@ const CACHE_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const getCacheKey = (text: string, lang: string) => `${text}-${lang}`;
 
 const cleanupCache = () => {
-  if (typeof window === "undefined" || !window.localStorage) return; // Only run in the browser
+  if (typeof window === "undefined" || !window.localStorage) return;
 
   const now = Date.now();
   Object.keys(localStorage).forEach((key) => {
@@ -28,7 +28,7 @@ export const useDebouncedSpeakText = (ttsUrl: string) => {
     async (text: string, lang: string) => {
       if (isSpeaking) return;
 
-      if (typeof window === "undefined" || !window.localStorage) return; // Only run in the browser
+      if (typeof window === "undefined" || !window.localStorage) return;
 
       const cacheKey = getCacheKey(text, lang);
       const cachedItem = localStorage.getItem(cacheKey);
@@ -39,7 +39,13 @@ export const useDebouncedSpeakText = (ttsUrl: string) => {
 
         setIsSpeaking(true);
         audio.play();
-        audio.onended = () => setIsSpeaking(false);
+        audio.onended = () => {
+          setIsSpeaking(false);
+        };
+        audio.onerror = () => {
+          console.error("Audio failed to load from cache.");
+          setIsSpeaking(false);
+        };
         return;
       }
 
@@ -54,10 +60,15 @@ export const useDebouncedSpeakText = (ttsUrl: string) => {
         const audioUrl = URL.createObjectURL(response.data);
         const audio = new Audio(audioUrl);
 
-        // Play the audio
+        // Handle play success and cleanup after play
         audio.play();
         audio.onended = () => {
-          URL.revokeObjectURL(audioUrl);
+          URL.revokeObjectURL(audioUrl); // Revoke the URL after audio finishes
+          setIsSpeaking(false);
+        };
+        audio.onerror = () => {
+          console.error("Audio failed to load from API response.");
+          URL.revokeObjectURL(audioUrl); // Cleanup URL on error
           setIsSpeaking(false);
         };
 
