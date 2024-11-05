@@ -28,6 +28,7 @@ const App: NextPage = () => {
       speechSentence,
       navigator.language === "id-ID" ? "id" : navigator.language
     );
+    console.log("running");
   };
 
   const renderApp = () => {
