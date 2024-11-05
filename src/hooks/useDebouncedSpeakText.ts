@@ -16,12 +16,12 @@ export const useDebouncedSpeakText = (ttsUrl: string) => {
           { responseType: "blob" }
         );
 
-        const audioUrl = URL.createObjectURL(response.data);
-        const audio = new Audio(audioUrl);
+        const audio = new Audio();
+        audio.src = URL.createObjectURL(response.data);
 
         audio.play();
         audio.onended = () => {
-          URL.revokeObjectURL(audioUrl);
+          URL.revokeObjectURL(audio.src);
           setIsSpeaking(false);
         };
       } catch (error) {
