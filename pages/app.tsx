@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { NextPage } from "next";
 import { Toaster } from "sonner";
+import { languageCodes } from "../src/data/flags";
 import { getColorName, rgbToHex } from "../src/utils";
 import { useTranslation } from "../src/context/TranslationContext";
 import { useDebouncedSpeakText } from "../src/hooks/useDebouncedSpeakText";
@@ -22,13 +23,23 @@ const App: NextPage = () => {
     setIsFacingMode((prevMode) => !prevMode);
   };
 
+  const getSupportedLanguage = (language: string) => {
+    // Check if exact match is in list
+    if (languageCodes.includes(language)) return language;
+
+    // Fallback by removing region codes (e.g., "pt-BR" -> "pt")
+    const baseLang = language.split("-")[0];
+    if (languageCodes.includes(baseLang)) return baseLang;
+
+    // Fallback to default (e.g., English if needed)
+    return "en";
+  };
+
   const whatColor = () => {
+    const supportedLang = getSupportedLanguage(navigator.language);
     const speechSentence = `${renderText} ${closestColorName}`;
-    debouncedSpeakText(
-      speechSentence,
-      navigator.language === "id-ID" ? "id" : navigator.language
-    );
-    console.log("running");
+
+    debouncedSpeakText(speechSentence, supportedLang);
   };
 
   const renderApp = () => {
@@ -62,7 +73,7 @@ const App: NextPage = () => {
               <div className="w-full whitespace-nowrap">{closestColorName}</div>
             </div>
             <div className="w-0 h-0 absolute top-[-6px] border-l-[10px] border-l-transparent border-t-[10px] border-t-white/30 border-r-[10px] border-r-transparent shadow-black/90 shadow-xl"></div>
-            <div className="fixed z-10 bottom-4 xs:bottom-6 w-full lg:max-w-sm px-7 flex items-center justify-between">
+            <div className="fixed z-10 bottom-4 xs:bottom-6 w-full lg:max-w-sm px-7 flex items-center justify-between select-none">
               <button className="w-12 h-12 rounded-full backdrop-blur-xl bg-black/30 flex items-center justify-center select-none">
                 <span className="sr-only">Microphone button</span>
                 <Image
