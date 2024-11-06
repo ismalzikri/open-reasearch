@@ -3,23 +3,29 @@ import axios from "axios";
 
 export const useDebouncedSpeakText = (ttsUrl: string) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [cache, setCache] = useState<Record<string, string>>({});
 
   const debouncedSpeakText = useCallback(
     async (text: string, lang: string) => {
       if (isSpeaking) return;
 
+      const cacheKey = `${text}-${lang}`;
       setIsSpeaking(true);
+
       try {
-        // Request Base64 audio data from the API
-        const response = await axios.post(
-          ttsUrl,
-          { text, lang },
-          { responseType: "json" } // Expect JSON response with Base64 audio
-        );
+        let base64Audio = cache[cacheKey];
 
-        const base64Audio = response.data.audio;
+        // Check cache
+        if (!base64Audio) {
+          const response = await axios.post(
+            ttsUrl,
+            { text, lang },
+            { responseType: "json" }
+          );
+          base64Audio = response.data.audio;
+          setCache((prev) => ({ ...prev, [cacheKey]: base64Audio }));
+        }
 
-        // Decode Base64 to ArrayBuffer
         const binaryString = atob(base64Audio);
         const len = binaryString.length;
         const audioBuffer = new Uint8Array(len);
@@ -27,7 +33,6 @@ export const useDebouncedSpeakText = (ttsUrl: string) => {
           audioBuffer[i] = binaryString.charCodeAt(i);
         }
 
-        // Play the audio using Web Audio API
         const AudioContext =
           window.AudioContext || (window as any).webkitAudioContext;
         const audioContext = new AudioContext();
@@ -39,14 +44,16 @@ export const useDebouncedSpeakText = (ttsUrl: string) => {
         source.connect(audioContext.destination);
         source.start(0);
 
-        // When playback ends, reset isSpeaking state
-        source.onended = () => setIsSpeaking(false);
+        source.onended = () => {
+          setIsSpeaking(false);
+          audioContext.close();
+        };
       } catch (error) {
         console.error("Error during TTS request:", error);
         setIsSpeaking(false);
       }
     },
-    [isSpeaking, ttsUrl]
+    [isSpeaking, ttsUrl, cache]
   );
 
   return debouncedSpeakText;
