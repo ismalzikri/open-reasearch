@@ -12,7 +12,7 @@ function base64ToBlob(base64: string, mimeType = "audio/mp3"): Blob {
   return new Blob([bytes.buffer], { type: mimeType });
 }
 
-export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 10) => {
+export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [cache, setCache] = useState<Map<string, Blob>>(new Map());
 
