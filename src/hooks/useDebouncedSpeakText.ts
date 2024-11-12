@@ -1,9 +1,15 @@
 import { useState, useCallback } from "react";
 import axios from "axios";
 
-// Convert ArrayBuffer directly to Blob (no need for Base64)
-function arrayBufferToBlob(buffer: ArrayBuffer, mimeType = "audio/opus"): Blob {
-  return new Blob([buffer], { type: mimeType });
+// Helper function to convert Base64 string to a Blob
+function base64ToBlob(base64: string, mimeType = "audio/mp3"): Blob {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return new Blob([bytes.buffer], { type: mimeType });
 }
 
 export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
@@ -25,13 +31,11 @@ export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
           const response = await axios.post(
             ttsUrl,
             { text, lang },
-            { responseType: "arraybuffer" } // Expect ArrayBuffer response directly
+            { responseType: "json" }
           );
-
-          // ArrayBuffer received directly from the response
-          const audioArrayBuffer = response.data;
-          if (audioArrayBuffer) {
-            audioBlob = arrayBufferToBlob(audioArrayBuffer);
+          const base64Audio = response.data.audio;
+          if (base64Audio) {
+            audioBlob = base64ToBlob(base64Audio);
             setCache((prevCache) => {
               const newCache = new Map(prevCache);
               newCache.set(cacheKey, audioBlob!);
@@ -54,7 +58,6 @@ export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
           const response = await fetch(audioURL);
           const arrayBuffer = await response.arrayBuffer();
           const decodedAudio = await audioContext.decodeAudioData(arrayBuffer);
-
           const source = audioContext.createBufferSource();
           source.buffer = decodedAudio;
           source.connect(audioContext.destination);
