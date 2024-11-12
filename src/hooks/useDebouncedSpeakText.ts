@@ -1,17 +1,6 @@
 import { useState, useCallback } from "react";
 import axios from "axios";
 
-// Helper function to convert Base64 string to a Blob
-function base64ToBlob(base64: string, mimeType = "audio/mp3"): Blob {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return new Blob([bytes.buffer], { type: mimeType });
-}
-
 export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [cache, setCache] = useState<Map<string, Blob>>(new Map());
@@ -31,23 +20,24 @@ export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
           const response = await axios.post(
             ttsUrl,
             { text, lang },
-            { responseType: "json" }
+            {
+              responseType: "blob", // Expect binary data
+            }
           );
-          const base64Audio = response.data.audio;
-          if (base64Audio) {
-            audioBlob = base64ToBlob(base64Audio);
-            setCache((prevCache) => {
-              const newCache = new Map(prevCache);
-              newCache.set(cacheKey, audioBlob!);
-              if (newCache.size > cacheSize) {
-                const firstKey = newCache.keys().next().value;
-                if (firstKey !== undefined) {
-                  newCache.delete(firstKey);
-                }
+
+          audioBlob = response.data; // Directly get the Blob from the response
+
+          setCache((prevCache) => {
+            const newCache = new Map(prevCache);
+            newCache.set(cacheKey, audioBlob!);
+            if (newCache.size > cacheSize) {
+              const firstKey = newCache.keys().next().value;
+              if (firstKey !== undefined) {
+                newCache.delete(firstKey);
               }
-              return newCache;
-            });
-          }
+            }
+            return newCache;
+          });
         }
 
         // Check if audioBlob is defined
