@@ -53,21 +53,41 @@ export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
         // Check if audioBlob is defined
         if (audioBlob) {
           const audioURL = URL.createObjectURL(audioBlob);
-          const audioContext = new (window.AudioContext ||
-            (window as any).webkitAudioContext)();
-          const response = await fetch(audioURL);
-          const arrayBuffer = await response.arrayBuffer();
-          const decodedAudio = await audioContext.decodeAudioData(arrayBuffer);
-          const source = audioContext.createBufferSource();
-          source.buffer = decodedAudio;
-          source.connect(audioContext.destination);
-          source.start(0);
 
-          source.onended = () => {
-            setIsSpeaking(false);
-            URL.revokeObjectURL(audioURL); // Clean up Blob URL
-            audioContext.close();
-          };
+          try {
+            // Attempt to use AudioContext for playback
+            const audioContext = new (window.AudioContext ||
+              (window as any).webkitAudioContext)();
+            const response = await fetch(audioURL);
+            const arrayBuffer = await response.arrayBuffer();
+
+            // Try decoding the audio data
+            const decodedAudio = await audioContext.decodeAudioData(
+              arrayBuffer
+            );
+            const source = audioContext.createBufferSource();
+            source.buffer = decodedAudio;
+            source.connect(audioContext.destination);
+            source.start(0);
+
+            source.onended = () => {
+              setIsSpeaking(false);
+              URL.revokeObjectURL(audioURL); // Clean up Blob URL
+              audioContext.close();
+            };
+          } catch (decodeError) {
+            console.error("Error decoding audio data:", decodeError);
+            console.log("Falling back to HTMLAudioElement");
+
+            // Fallback: Use HTMLAudioElement for playback
+            const audio = new Audio(audioURL);
+            audio.play();
+
+            audio.onended = () => {
+              setIsSpeaking(false);
+              URL.revokeObjectURL(audioURL); // Clean up Blob URL
+            };
+          }
         } else {
           console.error("Audio Blob is undefined");
           setIsSpeaking(false);
