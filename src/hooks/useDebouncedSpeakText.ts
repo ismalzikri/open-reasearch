@@ -3,7 +3,7 @@ import axios from "axios";
 
 // Helper function to convert Base64 string to a Blob
 function base64ToBlob(base64: string, mimeType = "audio/mp3"): Blob {
-  const binaryString = atob(base64);
+  const binaryString = atob(base64.replace(/\s/g, "")); // remove any whitespace
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
@@ -61,7 +61,6 @@ export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
             const response = await fetch(audioURL);
             const arrayBuffer = await response.arrayBuffer();
 
-            // Try decoding the audio data
             await new Promise((resolve, reject) => {
               audioContext.decodeAudioData(
                 arrayBuffer,
@@ -73,7 +72,7 @@ export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
 
                   source.onended = () => {
                     setIsSpeaking(false);
-                    URL.revokeObjectURL(audioURL); // Clean up Blob URL
+                    URL.revokeObjectURL(audioURL);
                     audioContext.close();
                   };
 
@@ -87,19 +86,20 @@ export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
             });
           } catch (decodeError) {
             console.error(
-              "AudioContext failed, falling back to HTMLAudioElement:",
+              "AudioContext failed, falling back to HTMLAudioElement with Blob directly:",
               decodeError
             );
 
-            // Fallback: Use HTMLAudioElement for playback
-            const audio = new Audio(audioURL);
+            // Fallback: Use HTMLAudioElement for playback with direct Blob
+            const audio = new Audio();
+            audio.src = URL.createObjectURL(audioBlob); // Using Blob directly
             audio.play().catch((playbackError) => {
               console.error("HTMLAudioElement playback failed:", playbackError);
             });
 
             audio.onended = () => {
               setIsSpeaking(false);
-              URL.revokeObjectURL(audioURL); // Clean up Blob URL
+              URL.revokeObjectURL(audio.src); // Clean up Blob URL
             };
           }
         } else {
