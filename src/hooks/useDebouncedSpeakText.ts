@@ -62,26 +62,40 @@ export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
             const arrayBuffer = await response.arrayBuffer();
 
             // Try decoding the audio data
-            const decodedAudio = await audioContext.decodeAudioData(
-              arrayBuffer
-            );
-            const source = audioContext.createBufferSource();
-            source.buffer = decodedAudio;
-            source.connect(audioContext.destination);
-            source.start(0);
+            await new Promise((resolve, reject) => {
+              audioContext.decodeAudioData(
+                arrayBuffer,
+                (decodedAudio) => {
+                  const source = audioContext.createBufferSource();
+                  source.buffer = decodedAudio;
+                  source.connect(audioContext.destination);
+                  source.start(0);
 
-            source.onended = () => {
-              setIsSpeaking(false);
-              URL.revokeObjectURL(audioURL); // Clean up Blob URL
-              audioContext.close();
-            };
+                  source.onended = () => {
+                    setIsSpeaking(false);
+                    URL.revokeObjectURL(audioURL); // Clean up Blob URL
+                    audioContext.close();
+                  };
+
+                  resolve(null);
+                },
+                (decodeError) => {
+                  console.error("Error decoding audio data:", decodeError);
+                  reject(decodeError);
+                }
+              );
+            });
           } catch (decodeError) {
-            console.error("Error decoding audio data:", decodeError);
-            console.log("Falling back to HTMLAudioElement");
+            console.error(
+              "AudioContext failed, falling back to HTMLAudioElement:",
+              decodeError
+            );
 
             // Fallback: Use HTMLAudioElement for playback
             const audio = new Audio(audioURL);
-            audio.play();
+            audio.play().catch((playbackError) => {
+              console.error("HTMLAudioElement playback failed:", playbackError);
+            });
 
             audio.onended = () => {
               setIsSpeaking(false);
