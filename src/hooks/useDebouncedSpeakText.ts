@@ -3,7 +3,7 @@ import axios from "axios";
 
 // Helper function to convert Base64 string to a Blob
 function base64ToBlob(base64: string, mimeType = "audio/mp3"): Blob {
-  const binaryString = atob(base64.replace(/\s/g, "")); // remove any whitespace
+  const binaryString = atob(base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
@@ -34,73 +34,59 @@ export const useDebouncedSpeakText = (ttsUrl: string, cacheSize = 100) => {
             { responseType: "json" }
           );
           const base64Audio = response.data.audio;
+
           if (base64Audio) {
-            audioBlob = base64ToBlob(base64Audio);
-            setCache((prevCache) => {
-              const newCache = new Map(prevCache);
-              newCache.set(cacheKey, audioBlob!);
-              if (newCache.size > cacheSize) {
-                const firstKey = newCache.keys().next().value;
-                if (firstKey !== undefined) {
-                  newCache.delete(firstKey);
+            try {
+              audioBlob = base64ToBlob(base64Audio, "audio/wav");
+              setCache((prevCache) => {
+                const newCache = new Map(prevCache);
+                newCache.set(cacheKey, audioBlob!);
+                if (newCache.size > cacheSize) {
+                  const firstKey = newCache.keys().next().value;
+                  if (firstKey !== undefined) {
+                    newCache.delete(firstKey);
+                  }
                 }
-              }
-              return newCache;
-            });
+                return newCache;
+              });
+            } catch (error) {
+              console.error("Base64 to Blob conversion failed:", error);
+            }
           }
         }
 
-        // Check if audioBlob is defined
+        // Play the audio if audioBlob exists
         if (audioBlob) {
           const audioURL = URL.createObjectURL(audioBlob);
+          const audioContext = new (window.AudioContext ||
+            (window as any).webkitAudioContext)();
 
           try {
-            // Attempt to use AudioContext for playback
-            const audioContext = new (window.AudioContext ||
-              (window as any).webkitAudioContext)();
             const response = await fetch(audioURL);
             const arrayBuffer = await response.arrayBuffer();
 
-            await new Promise((resolve, reject) => {
-              audioContext.decodeAudioData(
-                arrayBuffer,
-                (decodedAudio) => {
-                  const source = audioContext.createBufferSource();
-                  source.buffer = decodedAudio;
-                  source.connect(audioContext.destination);
-                  source.start(0);
+            audioContext.decodeAudioData(
+              arrayBuffer,
+              (buffer) => {
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+                source.start(0);
 
-                  source.onended = () => {
-                    setIsSpeaking(false);
-                    URL.revokeObjectURL(audioURL);
-                    audioContext.close();
-                  };
-
-                  resolve(null);
-                },
-                (decodeError) => {
-                  console.error("Error decoding audio data:", decodeError);
-                  reject(decodeError);
-                }
-              );
-            });
-          } catch (decodeError) {
-            console.error(
-              "AudioContext failed, falling back to HTMLAudioElement with Blob directly:",
-              decodeError
+                source.onended = () => {
+                  setIsSpeaking(false);
+                  URL.revokeObjectURL(audioURL); // Clean up Blob URL
+                  audioContext.close();
+                };
+              },
+              (decodeError) => {
+                console.error("Audio decoding failed:", decodeError);
+                setIsSpeaking(false);
+              }
             );
-
-            // Fallback: Use HTMLAudioElement for playback with direct Blob
-            const audio = new Audio();
-            audio.src = URL.createObjectURL(audioBlob); // Using Blob directly
-            audio.play().catch((playbackError) => {
-              console.error("HTMLAudioElement playback failed:", playbackError);
-            });
-
-            audio.onended = () => {
-              setIsSpeaking(false);
-              URL.revokeObjectURL(audio.src); // Clean up Blob URL
-            };
+          } catch (fetchError) {
+            console.error("Audio playback failed:", fetchError);
+            setIsSpeaking(false);
           }
         } else {
           console.error("Audio Blob is undefined");
